@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "container/hash/hash_table.h"
+#include "common/rwlatch.h"
 
 namespace bustub {
 
@@ -105,6 +106,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
    */
   auto Remove(const K &key) -> bool override;
 
+  void InsertInternal(const K &key, const V &value);
   /**
    * Bucket class for each hash table bucket that the directory points to.
    */
@@ -171,7 +173,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
   int global_depth_;    // The global depth of the directory
   size_t bucket_size_;  // The size of a bucket
   int num_buckets_;     // The number of buckets in the hash table
-  mutable std::mutex latch_;
+  mutable std::shared_mutex rwlatch_;
   std::vector<std::shared_ptr<Bucket>> dir_;  // The directory of the hash table
 
   // The following functions are completely optional, you can delete them if you have your own ideas.
@@ -182,6 +184,30 @@ class ExtendibleHashTable : public HashTable<K, V> {
    */
   auto RedistributeBucket(std::shared_ptr<Bucket> bucket) -> void;
 
+  auto SplitBucket(int index) -> void {
+    int pair_idx;
+    int local_depth;
+
+    std::shared_ptr<Bucket> bucket;
+    std::shared_ptr<Bucket> pair_bucket;
+
+    bucket = dir_[index];
+    local_depth = bucket->GetDepth();
+    pair_bucket = std::make_shared<Bucket>(bucket_size_, local_depth);
+    pair_idx = index ^ (1 << (local_depth-1));
+    dir_[pair_idx] = pair_bucket;
+    num_buckets_++;
+    std::list<std::pair<K,V>> items;
+    std::copy(bucket->GetItems().begin(), bucket->GetItems().end(), std::back_inserter(items));
+    bucket->GetItems().clear();
+    std::pair<K,V> item;
+    int n = items.size();
+    for(int i=0; i<n; i++){
+      item = items.front();
+      InsertInternal(item.first, item.second);
+      items.pop_front();
+    }
+  }
   /*****************************************************************
    * Must acquire latch_ first before calling the below functions. *
    *****************************************************************/
