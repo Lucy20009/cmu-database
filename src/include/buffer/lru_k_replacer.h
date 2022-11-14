@@ -17,11 +17,14 @@
 #include <mutex>  // NOLINT
 #include <unordered_map>
 #include <vector>
-
+#include <set>
+#include <list>
 #include "common/config.h"
 #include "common/macros.h"
 
 namespace bustub {
+
+static constexpr int INVALID_FRAME_ID = -1;
 
 /**
  * LRUKReplacer implements the LRU-k replacement policy.
@@ -135,11 +138,15 @@ class LRUKReplacer {
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  [[maybe_unused]] size_t current_timestamp_{0};
-  [[maybe_unused]] size_t curr_size_{0};
+  // [[maybe_unused]] size_t current_timestamp_{0};
+  // [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
-  [[maybe_unused]] size_t k_;
+  size_t k_;
   std::mutex latch_;
+  std::unordered_map<frame_id_t, std::list<size_t>> history_queue_;
+  std::unordered_map<frame_id_t, std::list<size_t>> cache_queue_;
+  std::unordered_map<frame_id_t, bool> evictable_;
+  std::atomic<size_t> current_timestamp_{0};
 };
 
 }  // namespace bustub
